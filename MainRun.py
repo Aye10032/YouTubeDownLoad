@@ -408,6 +408,7 @@ class window(wx.Frame):
         first = wx.Menu()
         help = first.Append(wx.NewId(), '帮助', '软件使用帮助')
         about = first.Append(wx.NewId(), '关于', '软件信息')
+        update = first.AppendMenu(wx.Menu(), '检查更新', '检查软件更新')
         _menubar.Append(first, '其他')
         self.Bind(wx.EVT_MENU, self.help, help)
         self.Bind(wx.EVT_MENU, self.about, about)
@@ -616,6 +617,32 @@ class aboutwin(wx.Frame):
     def closewindow(self, event):
         self.Destroy()
 
+
+# --------------------------------- 更新界面 ---------------------------------
+class aboutwin(wx.Frame):
+    def __init__(self, parent, id, titletext, text1):
+        wx.Frame.__init__(self, parent, id, titletext, size=(500, 370))
+        panel = wx.Panel(self)
+        self.Center()
+        icon = wx.Icon(LOGO_PATH, wx.BITMAP_TYPE_ICO)
+        self.SetIcon(icon)
+
+        font1 = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False, '微软雅黑')  # 标题字体
+
+        title = wx.StaticText(panel, -1, text1, (0, 15), (500, -1), wx.ALIGN_CENTER)
+        title.SetFont(font1)
+
+        f = open(LICENCE_PATH, mode='r', encoding='utf8')
+        text = f.read()
+
+        msg = wx.TextCtrl(panel, -1, text, (10, 40), (465, 250), style=wx.TE_MULTILINE)
+        msg.SetEditable(False)
+
+        button = wx.Button(panel, label='OK', pos=(220, 300), size=(60, 20))
+        self.Bind(wx.EVT_BUTTON, self.closewindow, button)
+
+    def closewindow(self, event):
+        self.Destroy()
 
 # --------------------------------- 输出界面 ---------------------------------
 class outPutwin(wx.Frame):
