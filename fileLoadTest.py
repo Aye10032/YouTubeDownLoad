@@ -6,7 +6,6 @@ rootdir = 'Download_Video'
 list = os.listdir(rootdir)
 filelist = []
 
-menuBar = None
 for i in range(0, len(list)):
     path = os.path.join(rootdir, list[i])
     if not os.path.isfile(path):
@@ -14,11 +13,10 @@ for i in range(0, len(list)):
 
 #关于这个方法的self 应该是会默认传进来一个self是一个
 # CommandEvent对象应该只能得到按钮的id 不知道怎么直接拿出按钮对象
-def print_menuitem_name(self):
-    #调用全局的变量menuBar
-    print(menuBar.FindItemById(self.Id).Name)
+
 
 class bucky(wx.Frame):
+    menuBar = None
 
     def __init__(self, parent, id):
         wx.Frame.__init__(self, parent, id, 'test', size=(300, 200),
@@ -30,11 +28,15 @@ class bucky(wx.Frame):
         load = wx.Menu()
         for i in filelist:
             but_1 = load.Append(-1, i)
-            self.Bind(wx.EVT_MENU, print_menuitem_name, but_1)
+            self.Bind(wx.EVT_MENU, self.print_menuitem_name, but_1)
         first.Append(-1, '加载', load)
         save = first.Append(-1, '保存')
         _menubar.Append(first, '文件')
         self.SetMenuBar(_menubar)
+
+    def print_menuitem_name(self,self2):
+        # 调用全局的变量menuBar
+        print(menuBar.FindItemById(self2.Id).Name)
 
 
 if __name__ == '__main__':
