@@ -1,4 +1,5 @@
 import requests
+import webbrowser
 
 url = 'https://api.github.com/repos/Aye10032/YouTubeDownLoad/releases/latest'
 
@@ -10,8 +11,5 @@ print(downloadLink)
 print(appname)
 print(version)
 
-r = requests.get(downloadLink, stream=True)
-f = open(appname, "wb")
-for chunk in r.iter_content(chunk_size=512):
-    if chunk:
-        f.write(chunk)
+link = r.json()['html_url']
+webbrowser.open(link)
