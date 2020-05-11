@@ -514,6 +514,7 @@ def dl():
         "external_downloader": ARIA2C,
         'outtmpl': path,
         'writeautomaticsub': True,
+        'logger': Logger(LOG_PATH + '/' + LOG_NAME + '.log')
     }
     if config['useProxy']:
         ydl_opts['proxy'] = config['ipaddress']
@@ -777,11 +778,24 @@ class Logger(object):
         self.log.write(message)
         self.log.flush()
 
+    def debug(self, message):
+        self.terminal.write('[debug]' + message + '\n')
+        self.terminal.flush()
+        self.log.write('[debug]' + message + '\n')
+        self.log.flush()
+
+    def warning(self, message):
+        self.terminal.write('[warning]' + message + '\n')
+        self.terminal.flush()
+        self.log.write('[warning]' + message + '\n')
+        self.log.flush()
+
     def flush(self):
         pass
 
 
 if __name__ == '__main__':
+    sys.stdout.isatty = lambda: False
     sys.stdout = Logger(LOG_PATH + '/' + LOG_NAME + '.log', sys.stdout)
     sys.stderr = Logger(LOG_PATH + '/' + LOG_NAME + '.log', sys.stderr)
     updateFilelist()
