@@ -13,6 +13,8 @@ from requests import request, exceptions
 import wx
 import wx.grid as gridlib
 import youtube_dl
+from googleapiclient.discovery import build
+from httplib2 import socks, ProxyInfo, Http
 
 # --------------------------------- 资源文件位置设置 ---------------------------------
 basedir = ""
@@ -23,7 +25,7 @@ else:
     # we are running in a normal Python environment
     basedir = os.path.dirname(__file__)
 
-VERSION = 'V3.11.1'
+VERSION = 'V4.0.0_beta'
 RES_PATH = 'res'
 LOG_PATH = 'log'
 CONFIG_PATH = 'res/config.json'
@@ -38,6 +40,9 @@ COPY_PATH = basedir + "/res/copy.png"
 TRANSLATE_PATH = basedir + "/res/translate.png"
 PLAY_PATH = basedir + "/res/play.png"
 LOG_NAME = time.strftime("%Y-%m-%d", time.localtime())
+YOUTUBE_DEVELOPER_KEY = 'AIzaSyBLn6N3SVih9p3fdD97QcBn-weFM5j2WVI'
+YOUTUBE_API_SERVICE_NAME = 'youtube'
+YOUTUBE_API_VERSION = 'v3'
 # --------------------------------- 前置检查部分开始 ---------------------------------
 if not os.path.exists(ARIA2C):
     copy2(ARIA2C_PATH, os.getcwd())
@@ -80,8 +85,9 @@ if not os.path.exists('res'):
 format_code, extension, resolution, format_note, file_size = [], [], [], [], []
 
 rootdir = 'Download_Video'
-list = os.listdir(rootdir)
+root_list = os.listdir(rootdir)
 filelist = []
+channel_result = {}
 
 
 class window(wx.Frame):
@@ -152,7 +158,10 @@ class window(wx.Frame):
         # --------------------------------- 源视频链接部分 ---------------------------------
 
         wx.StaticText(panel, -1, '视频链接：', (22, 110))
-        self.youtubeURL = wx.TextCtrl(panel, -1, '', (90, 105), (350, 23))
+        self.youtubeURL = wx.TextCtrl(panel, -1, '', (90, 105), (340, 23))
+
+        self.channel_list_btn = wx.Button(panel, -1, '...', pos=(435, 104), size=(25, 25))
+        self.Bind(wx.EVT_BUTTON, self.list_channel, self.channel_list_btn)
 
         self.startbtn = wx.Button(panel, -1, '下载视频', pos=(470, 104), size=(70, 25))
         self.Bind(wx.EVT_BUTTON, self.start, self.startbtn)
@@ -219,6 +228,13 @@ class window(wx.Frame):
         else:
             self.ipaddress.SetEditable(False)
             useProxy = False
+
+    def list_channel(self, event):
+        frame5 = ChannelFrame(parent=frame)
+        frame5.Show(True)
+
+    def set_channel_url(self, event):
+        self.youtubeURL.SetValue(config2['url'])
 
     def provideo(self, event):
         if self.highbtn.GetValue():
@@ -453,12 +469,12 @@ class window(wx.Frame):
 
 def updateFilelist():
     filelistlist = []
-    for i in range(0, len(list)):
-        path = os.path.join(rootdir, list[i])
+    for i in range(0, len(root_list)):
+        path = os.path.join(rootdir, root_list[i])
         if not os.path.isfile(path):
             temp = os.listdir(path)
             if 'msg.json' in temp:
-                filelist.append(list[i])
+                filelist.append(root_list[i])
 
 
 # --------------------------------- 更新信息 ---------------------------------
@@ -574,6 +590,91 @@ class translatewin(wx.Frame):
             self.resText = self.resText + s['trans']
 
         self.res.SetValue(self.resText)
+
+
+# --------------------------------- 视频列表界面 ---------------------------------
+class ChannelFrame(wx.Frame):
+    def __init__(self, parent):
+        wx.Frame.__init__(self, parent, -1, "近20个视频列表", size=(700, 400),
+                          style=wx.CAPTION | wx.MINIMIZE_BOX | wx.CLOSE_BOX)
+        icon = wx.Icon(LOGO_PATH, wx.BITMAP_TYPE_ICO)
+        self.SetIcon(icon)
+        self.Center()
+        self.getlist('UCZlDXzGoo7d44bwdNObFacg')
+        self.grid = ChannelGrid(self)
+        self.Bind(wx.EVT_CLOSE, self.OnExit)
+
+    def getlist(self, channel_id):
+        # 如下是代理设置
+        proxy_info = ProxyInfo(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 1080)
+        http = Http(timeout=300, proxy_info=proxy_info)
+
+        # 构建youtube对象时增加http参数
+        youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=YOUTUBE_DEVELOPER_KEY, http=http)
+
+        result = youtube.search().list(
+            part='snippet,id',
+            channelId=channel_id,
+            order='date',
+            maxResults=20
+        ).execute()
+
+        global channel_result
+        channel_result = result
+
+    def OnExit(self, event):
+        self.GetParent().set_channel_url(event)
+        self.Destroy()
+
+
+class ChannelGrid(gridlib.Grid):
+    def __init__(self, parent):
+        gridlib.Grid.__init__(self, parent)
+
+        count = 20
+        self.CreateGrid(count, 2)
+        self.SetRowLabelSize(30)
+        self.SetColSize(col=0, width=450)
+        self.SetColSize(col=1, width=185)
+
+        self.EnableEditing(False)
+        self.DisableColResize(False)
+        self.DisableRowResize(False)
+
+        self.SetColLabelValue(0, "标题")
+        self.SetColLabelValue(1, "日期")
+        self.SetColLabelAlignment(wx.ALIGN_CENTER, wx.ALIGN_CENTER)
+        self.SetDefaultCellAlignment(wx.ALIGN_CENTER, wx.ALIGN_CENTER)
+
+        for i in range(count):
+            self.SetRowSize(row=i, height=50)
+
+            vtitle = channel_result.get('items')[i].get('snippet').get('title')
+            if len(vtitle) > 30:
+                vtitle_list = list(vtitle)
+                vtitle_list.insert(30, '\n')
+                vtitle = ''.join(vtitle_list)
+
+            self.SetCellValue(i, 0, vtitle)
+            self.SetCellValue(i, 1, channel_result.get('items')[i].get('snippet').get('publishedAt'))
+
+        self.Bind(gridlib.EVT_GRID_CELL_LEFT_CLICK, self.OnCellLeftClick)
+
+    def OnCellLeftClick(self, evt):
+        row = "%d" % (evt.GetRow())
+        col = "%d" % (evt.GetCol())
+        i = int(row)
+        flag = int(col)
+
+        url = 'https://youtu.be/' + channel_result.get('items')[i].get('id').get('videoId')
+
+        if flag == 0:
+            config2['url'] = url
+            self.GetParent().OnExit(evt)
+        elif flag == 1:
+            win32api.ShellExecute(0, 'open', url, '', '', 1)
+
+        evt.Skip()
 
 
 # --------------------------------- 视频质量界面 ---------------------------------

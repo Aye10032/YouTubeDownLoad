@@ -2,7 +2,6 @@
 
 block_cipher = None
 
-
 a = Analysis(['D:\\program\\GitHub\\YouTubeDownLoad\\MainRun.py'],
              pathex=['D:\\program\\GitHub\\YouTubeDownLoad'],
              binaries=[],
